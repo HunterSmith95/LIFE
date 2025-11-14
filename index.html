@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trauma Assistant</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font --><style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .field-container label {
+            text-shadow: 1px 1px 1px #000;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 sm:p-6 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <!-- Header --><header class="mb-8 border-b border-red-700 pb-4">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-red-500 tracking-tight">
+                L.I.F.E - Localized Intelligent Field Evaluator
+            </h1>
+            <p class="text-gray-400 mt-1">Real-time clinical support for Arkansas EMS personnel.</p>
+        </header>
+
+        <!-- Main Content Area --><div class="grid md:grid-cols-2 gap-8">
+            <!-- Left: Voice Input & Controls --><div class="space-y-6">
+                <div class="p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-white">1. Narrate Trauma Report</h2>
+
+                    <!-- County Dropdown --><div class="mb-4">
+                        <label for="arkansas-county" class="block text-sm font-medium text-red-400 mb-1">Arkansas County of Service:</label>
+                        <select id="arkansas-county" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-red-500 focus:border-red-500">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+
+                    <!-- Status Display --><div id="status-message" class="text-sm p-3 rounded-lg text-center font-medium bg-gray-700 text-gray-300 mb-4">
+                        Press "Start Report" to begin field narration.
+                    </div>
+
+                    <!-- Voice Input Button --><button id="start-report-btn"
+                        class="w-full py-4 text-lg font-bold rounded-xl shadow-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-red-500/50 bg-red-500 hover:bg-red-600"
+                        onclick="toggleRecording(this)">
+                        <span id="button-text">Start Report</span>
+                    </button>
+
+                    <div id="voice-transcript" class="mt-4 p-3 bg-gray-700 rounded-lg h-32 overflow-y-auto text-sm text-gray-200 border border-gray-600">
+                        <p>Waiting for transcription...</p>
+                    </div>
+                </div>
+
+                <!-- AI Response & TTS Playback --><div class="p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-white">2. AI Clinical Guidance (Verbal)</h2>
+                    <div id="ai-verbal-recommendation" class="text-sm p-4 bg-gray-700 rounded-lg text-gray-300 border border-gray-600">
+                        The AI recommendation will appear here.
+                    </div>
+                    <button id="playback-btn"
+                        class="mt-4 w-full py-3 text-base font-bold rounded-xl bg-green-600 hover:bg-green-700 text-white transition duration-200 disabled:opacity-50"
+                        onclick="playAudio()" disabled>
+                        <span id="playback-text">Playback Recommendation</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Auto-Filled PCR Template & Dosage Calculator --><div class="space-y-6">
+                 <!-- Dosage Calculator --><div class="p-6 bg-gray-800 rounded-xl shadow-2xl border border-blue-700">
+                    <h2 class="text-xl font-semibold mb-4 text-blue-400">Pediatric Dose Calculator</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="drug-select" class="block text-sm font-medium text-gray-400 mb-1">Select Drug:</label>
+                            <select id="drug-select" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>Choose Medication</option>
+                                <option value="Epinephrine 1:1,000 (IM for Anaphylaxis)">Epinephrine 1:1,000 (Anaphylaxis)</option>
+                                <option value="Adenosine (for SVT)">Adenosine (for SVT)</option>
+                                <option value="Dextrose 10% (for Hypoglycemia)">Dextrose 10% (Hypoglycemia)</option>
+                                <option value="Midazolam (for Seizures)">Midazolam (Seizures)</option>
+                                <option value="Naloxone (for Opioid Overdose)">Naloxone (Opioid Overdose)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <!-- UPDATED: Changed Label to lbs -->
+                            <label for="patient-weight-lbs" class="block text-sm font-medium text-gray-400 mb-1">Patient Weight (lbs):</label>
+                            <input type="number" id="patient-weight-lbs" placeholder="e.g., 44" min="1"
+                                   class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <button id="calculate-dose-btn"
+                        class="w-full py-3 text-base font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition duration-200 disabled:opacity-50"
+                        onclick="calculatePediatricDose()" disabled>
+                        Calculate Dose
+                    </button>
+                    <div id="dosage-result" class="mt-4 p-4 bg-gray-700 rounded-lg text-gray-200 border border-gray-600 min-h-[50px]">
+                        <p class="text-sm">Select drug and enter weight in pounds (lbs). It will be converted to kilograms (kg) for calculation.</p>
+                    </div>
+                </div>
+
+                <!-- Auto-Filled PCR Template --><div class="p-6 bg-gray-800 rounded-xl shadow-2xl border border-red-700">
+                    <h2 class="text-xl font-semibold mb-4 text-red-400">3. Auto-Generated PCR Template</h2>
+                    <div id="pcr-template" class="space-y-4">
+                        <!-- PCR Fields will be inserted here --><div class="field-container">
+                            <label class="block text-sm font-medium text-gray-400">Chief Complaint:</label>
+                            <p id="chiefComplaint" class="p-2 bg-gray-700 rounded text-gray-200 min-h-[40px]">Awaiting AI analysis...</p>
+                        </div>
+                        <div class="field-container">
+                            <label class="block text-sm font-medium text-gray-400">Mechanism of Injury (MOI):</label>
+                            <p id="mechanismOfInjury" class="p-2 bg-gray-700 rounded text-gray-200 min-h-[40px]">Awaiting AI analysis...</p>
+                        </div>
+                        <div class="field-container">
+                            <label class="block text-sm font-medium text-gray-400">Initial Vitals & Status:</label>
+                            <p id="initialVitals" class="p-2 bg-gray-700 rounded text-gray-200 min-h-[40px]">Awaiting AI analysis...</p>
+                        </div>
+                        <div class="field-container">
+                            <label class="block text-sm font-medium text-gray-400">Interventions Performed:</label>
+                            <ul id="interventions" class="list-disc ml-5 space-y-1 p-2 bg-gray-700 rounded text-gray-200 min-h-[40px]">
+                                <li>Awaiting AI analysis...</li>
+                            </ul>
+                        </div>
+                        <div class="field-container">
+                            <label class="block text-sm font-medium text-gray-400">Triage Recommendation:</label>
+                            <p id="triageRecommendation" class="p-2 bg-gray-700 rounded text-gray-200 min-h-[40px]">Awaiting AI analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Conversation Log --><div class="mt-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+            <h2 class="text-xl font-semibold mb-4 text-white">4. Session Log (Current Shift History)</h2>
+            <div id="session-log-container" class="space-y-4 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 italic">No reports logged yet for this session.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK Imports --><script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Set Firestore log level for debugging
+        setLogLevel('Debug');
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId = 'unknown';
+        
+        async function initFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                     console.error("Firebase config is empty. Skipping initialization.");
+                     return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                console.log("Firebase initialized. User ID:", userId);
+
+                // Example usage: Save a simple status document
+                const statusRef = doc(db, `artifacts/${appId}/users/${userId}/app_status`, "init_check");
+                await setDoc(statusRef, { 
+                    initialized: new Date().toISOString(), 
+                    appContext: "EMS Trauma AI" 
+                }, { merge: true });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or sign-in:", error);
+                // Fallback to anonymous ID if sign-in fails
+                userId = crypto.randomUUID();
+            }
+        }
+        
+        initFirebase();
+
+        // Expose necessary variables to the global scope for the main script
+        window.appId = appId;
+        window.db = db;
+        window.auth = auth;
+    </script>
+
+    <!-- Main Application Logic (Must be outside the module script to access DOM and Web APIs easily) --><script>
+        // Gemini API Configuration
+        const apiKey = "AIzaSyBTUg3Hxzs2ON3b-Ben7b4_PnzzqHiPDg8"; // User-provided API Key
+        const apiUrlText = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const apiUrlTTS = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+        
+        // Arkansas EMS Guideline URL for grounding (Used only for trauma report grounding)
+        const ARKANSAS_GUIDELINES_URL = "https://healthy.arkansas.gov/wp-content/uploads/EMS_National_Guidelines.pdf";
+        
+        // DOM Elements
+        const statusMessage = document.getElementById('status-message');
+        const startReportBtn = document.getElementById('start-report-btn');
+        const buttonText = document.getElementById('button-text');
+        const voiceTranscript = document.getElementById('voice-transcript');
+        const pcrTemplate = document.getElementById('pcr-template');
+        const playbackBtn = document.getElementById('playback-btn');
+        const aiVerbalRecommendation = document.getElementById('ai-verbal-recommendation');
+        const sessionLogContainer = document.getElementById('session-log-container'); 
+        const countySelect = document.getElementById('arkansas-county');
+        const drugSelect = document.getElementById('drug-select');
+        // UPDATED: Use lbs ID
+        const weightInputLbs = document.getElementById('patient-weight-lbs'); 
+        const calculateDoseBtn = document.getElementById('calculate-dose-btn');
+        const dosageResult = document.getElementById('dosage-result');
+
+        let recognition = null;
+        let isRecording = false;
+        let audioBlob = null;
+        
+        // Session History (only persists while the tab is open)
+        let sessionHistory = []; 
+        
+        // Full list of Arkansas counties
+        const ARKANSAS_COUNTIES = [
+            "Arkansas", "Ashley", "Baxter", "Benton", "Boone", "Bradley", "Calhoun", "Carroll", "Chicot", "Clark", 
+            "Clay", "Cleburne", "Cleveland", "Columbia", "Conway", "Craighead", "Crawford", "Crittenden", "Cross", 
+            "Dallas", "Desha", "Drew", "Faulkner", "Franklin", "Fulton", "Garland", "Grant", "Greene", "Hempstead", 
+            "Hot Spring", "Howard", "Independence", "Izard", "Jackson", "Jefferson", "Johnson", "Lafayette", "Lawrence", 
+            "Lee", "Lincoln", "Little River", "Logan", "Lonoke", "Madison", "Marion", "Miller", "Mississippi", "Monroe", 
+            "Montgomery", "Nevada", "Newton", "Ouachita", "Perry", "Phillips", "Pike", "Poinsett", "Polk", "Pope", 
+            "Prairie", "Pulaski", "Randolph", "St. Francis", "Saline", "Scott", "Searcy", "Sebastian", "Sevier", 
+            "Sharp", "Stone", "Union", "Van Buren", "Washington", "White", "Woodruff", "Yell"
+        ];
+        
+        // --- PCR JSON Schema for Structured Output ---
+        const pcrSchema = {
+            type: "OBJECT",
+            properties: {
+                "chiefComplaint": { "type": "STRING", "description": "The primary reason for EMS activation and patient's chief complaint." },
+                "mechanismOfInjury": { "type": "STRING", "description": "How the injury occurred (e.g., high-speed MVC, 20-foot fall, fall down stairs)." },
+                "initialVitals": { "type": "STRING", "description": "The patient's first recorded vital signs and GCS (e.g., BP 90/60, HR 120, RR 24, GCS 13). This should be the MOST RECENT and complete set." },
+                "interventions": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "A comprehensive list of ALL treatments performed so far (e.g., IV established, splint applied, c-collar placed, tourniquet). Do not duplicate items." },
+                "triageRecommendation": { "type": "STRING", "description": "The suggested destination based on the field findings (e.g., Level I Trauma Center, Community Hospital, Closest facility). This may change as new information is revealed." }
+            },
+            propertyOrdering: ["chiefComplaint", "mechanismOfInjury", "initialVitals", "interventions", "triageRecommendation"]
+        };
+
+        // --- Pediatric Dosage Schema ---
+        const dosageSchema = {
+            type: "OBJECT",
+            properties: {
+                "drug": { "type": "STRING", "description": "The drug requested." },
+                "weightKg": { "type": "NUMBER", "description": "The weight of the patient in kilograms (kg)." },
+                "calculatedDose": { "type": "STRING", "description": "The calculated pediatric dose, including the unit of measure (e.g., 0.3mg, 20mL)." },
+                "justification": { "type": "STRING", "description": "Brief explanation of the calculation and the dose-per-kg used." }
+            },
+            required: ["drug", "weightKg", "calculatedDose", "justification"]
+        };
+
+
+        // --- Helper Functions for TTS Audio Conversion (Same as before) ---
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcm16, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; 
+            const buffer = new ArrayBuffer(44 + pcm16.length * bytesPerSample);
+            const view = new DataView(buffer);
+            let offset = 0;
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset + i, str.charCodeAt(i));
+                }
+                offset += str.length;
+            }
+            function writeUint32(val) {
+                view.setUint32(offset, val, true);
+                offset += 4;
+            }
+            function writeUint16(val) {
+                view.setUint16(offset, val, true);
+                offset += 2;
+            }
+
+            writeString('RIFF');
+            writeUint32(36 + pcm16.length * bytesPerSample);
+            writeString('WAVE');
+            writeString('fmt ');
+            writeUint32(16); 
+            writeUint16(1);  
+            writeUint16(numChannels);
+            writeUint32(sampleRate);
+            writeUint32(sampleRate * numChannels * bytesPerSample); 
+            writeUint16(numChannels * bytesPerSample); 
+            writeUint16(8 * bytesPerSample); 
+            writeString('data');
+            writeUint32(pcm16.length * bytesPerSample); 
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += bytesPerSample;
+            }
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+
+        // --- Speech Recognition (Voice Input - Unchanged) ---
+
+        function initRecognition() {
+            if (!('webkitSpeechRecognition' in window)) {
+                statusMessage.textContent = 'Speech Recognition not supported in this browser. Use Chrome/Edge.';
+                startReportBtn.disabled = true;
+                return;
+            }
+            
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                buttonText.textContent = 'Recording... TAP TO STOP';
+                startReportBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                startReportBtn.classList.add('bg-gray-400', 'hover:bg-gray-500', 'animate-pulse');
+                statusMessage.textContent = 'Listening for trauma report narration...';
+                voiceTranscript.innerHTML = '<p class="text-yellow-400">Listening...</p>';
+                playbackBtn.disabled = true;
+                aiVerbalRecommendation.textContent = 'The AI recommendation will appear here.';
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                voiceTranscript.textContent = transcript;
+                statusMessage.textContent = 'Report transcribed. Sending to AI for processing...';
+                
+                processTranscript(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                isRecording = false;
+                if (event.error !== 'no-speech') {
+                    statusMessage.textContent = `Recognition error: ${event.error}. Try again.`;
+                } else {
+                    statusMessage.textContent = 'No speech detected. Press "Start Report" again.';
+                }
+                updateButtonState();
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    isRecording = false;
+                    updateButtonState();
+                }
+            };
+        }
+
+        function updateButtonState() {
+            if (isRecording) {
+                startReportBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                startReportBtn.classList.add('bg-gray-400', 'hover:bg-gray-500', 'animate-pulse');
+                buttonText.textContent = 'Recording... TAP TO STOP';
+            } else {
+                startReportBtn.classList.remove('bg-gray-400', 'hover:bg-gray-500', 'animate-pulse');
+                startReportBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                buttonText.textContent = 'Start Report';
+            }
+        }
+
+        function toggleRecording(button) {
+            if (!recognition) {
+                initRecognition();
+                if (!recognition) return;
+            }
+
+            if (isRecording) {
+                recognition.stop();
+                isRecording = false;
+            } else {
+                recognition.start();
+            }
+        }
+
+        // --- Session History Logic (Unchanged) ---
+
+        function logSessionEntry(transcript, pcrData, recommendation) {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const interventionsString = (pcrData.interventions || []).join(', ');
+            
+            sessionHistory.unshift({
+                time: timestamp,
+                transcript: transcript,
+                chiefComplaint: pcrData.chiefComplaint,
+                recommendation: recommendation,
+                interventions: interventionsString 
+            });
+
+            if (sessionHistory.length > 10) {
+                sessionHistory.pop();
+            }
+        }
+
+        function renderSessionLog() {
+            if (sessionHistory.length === 0) {
+                sessionLogContainer.innerHTML = '<p class="text-gray-500 italic">No reports logged yet for this session.</p>';
+                return;
+            }
+
+            sessionLogContainer.innerHTML = '';
+
+            sessionHistory.forEach((entry, index) => {
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-lg border ${index === 0 ? 'border-red-500 bg-gray-700' : 'border-gray-800 bg-gray-700/50'} shadow-md`;
+                
+                card.innerHTML = `
+                    <p class="text-xs font-bold text-red-400 mb-1">${entry.time} - Report #${sessionHistory.length - index}</p>
+                    <p class="text-sm text-gray-300"><strong>CC:</strong> ${entry.chiefComplaint || 'N/A'}</p>
+                    <p class="text-sm text-gray-300"><strong>Interventions:</strong> ${entry.interventions || 'None documented'}</p>
+                    <p class="text-sm font-semibold text-green-400 mt-1">AI Guidance: ${entry.recommendation}</p>
+                    <details class="text-xs text-gray-400 mt-2 cursor-pointer">
+                        <summary>Full Transcript</summary>
+                        <p class="mt-1 p-1 bg-gray-900 rounded">${entry.transcript}</p>
+                    </details>
+                `;
+                sessionLogContainer.appendChild(card);
+            });
+        }
+        
+        function getFullContext(currentTranscript) {
+            let fullContext = '';
+            
+            sessionHistory.slice().reverse().forEach((entry, index) => {
+                fullContext += `[REPORT ${index + 1} - TIME AGO]: ${entry.transcript}\n---\n`;
+            });
+            
+            fullContext += `[CURRENT REPORT - JUST NOW]: ${currentTranscript}\n---\n`;
+            
+            return fullContext.trim();
+        }
+
+        // --- Pediatric Dosage Calculation Logic (UPDATED for lbs) ---
+        
+        async function calculatePediatricDose() {
+            const drug = drugSelect.value;
+            // Get weight in pounds (lbs)
+            const weightLbs = parseFloat(weightInputLbs.value); 
+            // Conversion factor: 1 lb = 0.453592 kg (or divide by 2.20462)
+            const weightKg = parseFloat((weightLbs / 2.20462).toFixed(2));
+
+            // Validate drug selection and positive weight
+            if (!drug || isNaN(weightLbs) || weightLbs <= 0) {
+                dosageResult.innerHTML = `<p class="text-red-400">🚨 Error: Please select a drug and enter a valid positive weight in pounds (lbs).</p>`;
+                return;
+            }
+
+            calculateDoseBtn.disabled = true;
+            dosageResult.innerHTML = `<p class="text-yellow-400">🧠 Calculating dose for a ${weightLbs} lbs (${weightKg} kg) patient...</p>`;
+
+            // Query updated to use converted weight in kg
+            const query = `Calculate the pediatric dose for ${drug} for a patient who weighs ${weightKg} kg (converted from ${weightLbs} lbs). Base your calculation on standard PALS/APLS weight-based protocols and common EMS protocols. Provide the result in the specified JSON format.`;
+            
+            // System prompt updated to reflect weight usage
+            const systemPrompt = `You are a certified Paramedic AI assistant. Your role is to provide quick, accurate, weight-based pediatric drug calculations. You MUST use the provided weight in kilograms (${weightKg} kg) to calculate the dose based on the standard recommended range for the specified drug in the US EMS setting. The original input was ${weightLbs} lbs.`;
+
+            try {
+                // FIX: Removed tools property as it conflicts with JSON schema
+                const payload = {
+                    contents: [{ parts: [{ text: query }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: dosageSchema
+                    }
+                };
+
+                const response = await fetchWithRetry(apiUrlText, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!jsonText) throw new Error("Dosage calculation response missing or malformed.");
+
+                const parsedDose = JSON.parse(jsonText);
+                
+                // Display result updated to show both lbs (input) and kg (used for calc)
+                dosageResult.innerHTML = `
+                    <p class="text-lg font-bold text-blue-300">${parsedDose.calculatedDose}</p>
+                    <p class="text-sm"><strong>Drug:</strong> ${parsedDose.drug}</p>
+                    <p class="text-sm"><strong>Input Weight:</strong> ${weightLbs} lbs</p>
+                    <p class="text-sm"><strong>Weight Used for Calc:</strong> ${weightKg} kg</p>
+                    <p class="text-xs mt-2 text-gray-400">(${parsedDose.justification})</p>
+                `;
+
+            } catch (error) {
+                console.error('Error calculating dose:', error);
+                dosageResult.innerHTML = `<p class="text-red-400">⚠️ Calculation Error. Please check drug/weight or consult manual protocols. Details: ${error.message}</p>`;
+            } finally {
+                calculateDoseBtn.disabled = false;
+            }
+        }
+
+        // --- Gemini API Call Logic for PCR (FIXED: Removed tools from JSON payloads) ---
+
+        async function processTranscript(transcript) {
+            
+            const fullContext = getFullContext(transcript);
+            const county = countySelect.value || 'Unspecified Arkansas County';
+            
+            // System Prompt: Emphasizes adherence to guidelines via URL and includes County
+            const systemPrompt = `You are an AI clinical assistant for EMS in ${county}, Arkansas. Your goal is to maintain a continuous, evolving Pre-Hospital Care Report (PCR) based on sequential verbal updates from the field. 
+    
+            ***SYNTHESIS INSTRUCTION:*** Analyze the complete chronological narration provided below. Synthesize ALL information across all reports into a single, comprehensive, and up-to-date JSON structure. Vitals should reflect the most recent, complete set. All triage and interventions must align with best practices and the official Arkansas EMS guidelines (grounded reference is not used for this call, but context should be used).
+
+            The overall patient encounter context is:\n\n${fullContext}`;
+
+
+            let recommendationText = "Report analyzed. No critical recommendations at this time. Maintain standard protocol.";
+            
+            try {
+                statusMessage.textContent = 'AI is processing data and generating clinical recommendation...';
+                
+                // 1. Generate Structured PCR Data (JSON Model)
+                // FIX: REMOVED tools: [{ "google_search": {} }] from this payload
+                const payloadText = {
+                    contents: [{ 
+                        parts: [{ text: `Synthesize the full patient encounter history and provide the current, complete PCR in JSON format. The service location is ${county}.` }] 
+                    }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: pcrSchema
+                    }
+                };
+                
+                // Fetch the PCR data
+                const response = await fetchWithRetry(apiUrlText, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloadText)
+                });
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && 
+                    result.candidates[0].content && result.candidates[0].content.parts && 
+                    result.candidates[0].content.parts.length > 0) {
+                    
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(jsonText);
+                    
+                    updatePCRTemplate(parsedJson, county);
+
+                    // 2. Generate Concise Recommendation Text (Text Model) - Uses grounding (tools)
+                    const recQuery = `Based on this structured report for a scene in ${county}: ${JSON.stringify(parsedJson)}. What is a single, concise (under 15 words) clinical recommendation for the EMS crew? Ensure the recommendation aligns with the Arkansas guidelines.`;
+                    
+                    const recResponse = await fetchWithRetry(apiUrlText, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: recQuery }] }],
+                            systemInstruction: { parts: [{ text: "You are a concise clinical advisor. Provide only the recommendation text." }] },
+                            tools: [{ "google_search": {} }], // Grounding is enabled for this TEXT-ONLY recommendation
+                        })
+                    });
+                    
+                    const recResult = await recResponse.json();
+                    recommendationText = recResult.candidates?.[0]?.content?.parts?.[0]?.text || recommendationText;
+
+                    aiVerbalRecommendation.textContent = recommendationText;
+                    
+                    // --- LOG SESSION ENTRY ---
+                    logSessionEntry(transcript, parsedJson, recommendationText);
+                    renderSessionLog();
+                    
+                    // 3. Generate TTS Audio for the Recommendation (TTS Model)
+                    await generateTTS(recommendationText);
+                    
+                } else {
+                    throw new Error("AI response content missing or malformed.");
+                }
+            } catch (error) {
+                console.error('Error in AI processing:', error);
+                statusMessage.textContent = `AI analysis failed: ${error.message}. Please check console.`;
+                updateButtonState();
+            }
+        }
+        
+        async function generateTTS(textToSpeak) {
+             statusMessage.textContent = 'Generating AI voice guidance...';
+            try {
+                const payloadTTS = {
+                    contents: [{
+                        parts: [{ text: `Say confidently: ${textToSpeak}` }] 
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" } 
+                            }
+                        }
+                    }
+                };
+                
+                const response = await fetchWithRetry(apiUrlTTS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloadTTS)
+                }, true);
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const match = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = match ? parseInt(match[1], 10) : 16000;
+                    
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    
+                    audioBlob = URL.createObjectURL(wavBlob);
+                    
+                    statusMessage.textContent = 'Voice guidance ready. Tap "Playback Recommendation".';
+                    playbackBtn.disabled = false;
+                    updateButtonState();
+                    playAudio();
+
+                } else {
+                    throw new Error("TTS audio data missing or malformed.");
+                }
+
+            } catch (error) {
+                console.error('Error generating TTS:', error);
+                statusMessage.textContent = `TTS failed: ${error.message}`;
+            }
+        }
+
+        function playAudio() {
+            if (audioBlob) {
+                const audio = new Audio(audioBlob);
+                audio.play();
+                playbackBtn.textContent = 'Playing...';
+                playbackBtn.disabled = true;
+                audio.onended = () => {
+                    playbackBtn.textContent = 'Playback Recommendation';
+                    playbackBtn.disabled = false;
+                };
+                audio.onerror = () => {
+                    playbackBtn.textContent = 'Audio Error';
+                    console.error("Audio playback failed.");
+                }
+            }
+        }
+
+        // --- UI Update Logic (Unchanged) ---
+
+        function updatePCRTemplate(data) {
+            document.getElementById('chiefComplaint').textContent = data.chiefComplaint || 'Data not found.';
+            document.getElementById('mechanismOfInjury').textContent = data.mechanismOfInjury || 'Data not found.';
+            document.getElementById('initialVitals').textContent = data.initialVitals || 'Data not found.';
+            document.getElementById('triageRecommendation').textContent = data.triageRecommendation || 'Data not found.';
+            
+            const interventionsList = document.getElementById('interventions');
+            interventionsList.innerHTML = '';
+            
+            const interventionsArray = Array.isArray(data.interventions) ? data.interventions : [];
+
+            if (interventionsArray.length > 0) {
+                interventionsArray.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = item;
+                    interventionsList.appendChild(li);
+                });
+                interventionsList.classList.remove('min-h-[40px]');
+            } else {
+                interventionsList.innerHTML = '<li>No specific interventions documented in report.</li>';
+                interventionsList.classList.add('min-h-[40px]');
+            }
+        }
+
+        function populateCountyDropdown() {
+            const select = document.getElementById('arkansas-county');
+            // Add default option
+            let defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "Select County";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            select.appendChild(defaultOption);
+
+            ARKANSAS_COUNTIES.forEach(county => {
+                let option = document.createElement('option');
+                option.value = county;
+                option.textContent = county + " County";
+                select.appendChild(option);
+            });
+
+            // Set a sensible default for testing/quick use
+            select.value = "Washington"; 
+        }
+
+        // --- Exponential Backoff Fetch Utility (Unchanged) ---
+
+        async function fetchWithRetry(url, options, fastRetry = false) {
+            const maxRetries = 3;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    } else if (response.status === 429) { 
+                        const delay = fastRetry ? 1000 * (2 ** i) : 5000 * (2 ** i);
+                        if (i < maxRetries - 1) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } else {
+                            throw new Error(`API rate limit exceeded after ${maxRetries} retries.`);
+                        }
+                    } else {
+                        const errorBody = await response.text();
+                        // Log the full error to console for debugging
+                        console.error(`Attempt ${i + 1} failed with status ${response.status}. Response body:`, errorBody);
+                        
+                        // Check for specific API error (like the 400 JSON/Tool error)
+                        let errorMessage = `API request failed with status ${response.status}.`;
+                        try {
+                            const errorJson = JSON.parse(errorBody);
+                            errorMessage = errorJson.error?.message || errorMessage;
+                        } catch {
+                            // ignore parsing error if it's not JSON
+                        }
+
+                        if (i === maxRetries - 1) {
+                            throw new Error(errorMessage);
+                        }
+                        
+                        // For non-recoverable 4xx errors (excluding 429), break retry loop and throw immediately
+                        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+                            throw new Error(errorMessage);
+                        }
+                        
+                        // Wait for retry
+                        const delay = fastRetry ? 1000 * (2 ** i) : 5000 * (2 ** i);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    const delay = fastRetry ? 1000 * (2 ** i) : 5000 * (2 ** i);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        // --- Initialization and Event Listeners (UPDATED for lbs) ---
+        
+        function setupEventListeners() {
+            // Enable/disable dosage calculation button based on inputs
+            const checkInputs = () => {
+                const drugSelected = drugSelect.value !== "";
+                // Check if weight is a positive number
+                const weightValid = parseFloat(weightInputLbs.value) > 0; 
+                calculateDoseBtn.disabled = !(drugSelected && weightValid);
+            };
+
+            drugSelect.addEventListener('change', checkInputs);
+            weightInputLbs.addEventListener('input', checkInputs); // UPDATED: listining to lbs input
+        }
+
+
+        window.toggleRecording = toggleRecording;
+        window.playAudio = playAudio;
+        window.calculatePediatricDose = calculatePediatricDose;
+
+
+        window.onload = () => {
+            populateCountyDropdown();
+            initRecognition();
+            renderSessionLog(); 
+            setupEventListeners();
+        };
+
+    </script>
+</body>
+</html>
